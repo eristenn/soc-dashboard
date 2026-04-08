@@ -1,217 +1,170 @@
-import json
-import os
-from datetime import datetime
+﻿const categoryOrder = ['Gaming', 'Browsing', 'School/Work', 'Job Search', 'Unknown'];
+const categoryMap = {
+    Unknown: 0,
+    Browsing: 1,
+    'Job Search': 2,
+    'School/Work': 3,
+    Gaming: 4,
+};
+const categoryColor = {
+    Gaming: '#ef4444',
+    Browsing: '#2563eb',
+    'School/Work': '#10b981',
+    'Job Search': '#f59e0b',
+    Unknown: '#94a3b8',
+};
 
-import psutil
-import requests
+let usageChart;
+let activityChart;
 
-from config import PROCESS_CATEGORIES, STATE_FILE
+function init() {
+    document.getElementById('simulate-btn').addEventListener('click', simulateAlert);
+    initCharts();
+    fetchDashboard();
+    setInterval(fetchDashboard, window.REFRESH_SECONDS * 1000);
+}
 
+function initCharts() {
+    const usageCtx = document.getElementById('usageChart').getContext('2d');
+    const activityCtx = document.getElementById('activityChart').getContext('2d');
 
-def ensure_state_file():
-    os.makedirs("data", exist_ok=True)
-    if not os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(
+    usageChart = new Chart(usageCtx, {
+        type: 'doughnut',
+        data: {
+            labels: categoryOrder,
+            datasets: [
                 {
-                    "last_ip": None,
-                    "last_location": None,
-                    "last_category": "Unknown",
-                    "usage_seconds": {},
-                    "history": [],
-                    "alerts_history": []
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: categoryOrder.map((cat) => categoryColor[cat]),
+                    borderWidth: 0,
                 },
-                f,
-                indent=2
-            )
+            ],
+        },
+        options: {
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#e2e8f0',
+                    },
+                },
+            },
+        },
+    });
 
+    activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Activity',
+                    data: [],
+                    borderColor: '#60a5fa',
+                    backgroundColor: 'rgba(96, 165, 250, 0.2)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 3,
+                },
+            ],
+        },
+        options: {
+            scales: {
+                x: {
+                    ticks: {
+                        color: '#cbd5e1',
+                    },
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        callback: (value) => {
+                            return Object.keys(categoryMap).find((key) => categoryMap[key] === value) || '';
+                        },
+                        color: '#cbd5e1',
+                    },
+                },
+            },
+            plugins: {
+                legend: {
+                    display: false,
+                },
+            },
+        },
+    });
+}
 
-def load_state():
-    ensure_state_file()
-    with open(STATE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+async function fetchDashboard() {
+    try {
+        const response = await fetch('/api/dashboard');
+        if (!response.ok) {
+            throw new Error('Dashboard request failed');
+        }
+        const data = await response.json();
+        updateUI(data);
+    } catch (error) {
+        console.error('Unable to load dashboard data:', error);
+    }
+}
 
-
-def save_state(state):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
-
-
-def get_active_processes(limit=30):
-    processes = []
-    seen = set()
-
-    for proc in psutil.process_iter(["pid", "name"]):
-        try:
-            name = (proc.info["name"] or "").lower()
-            if name and name not in seen:
-                seen.add(name)
-                processes.append({
-                    "pid": proc.info["pid"],
-                    "name": name
-                })
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-
-    processes = sorted(processes, key=lambda x: x["name"])
-    return processes[:limit]
-
-
-def classify_process(process_name):
-    process_name = process_name.lower()
-
-    for category, keywords in PROCESS_CATEGORIES.items():
-        for keyword in keywords:
-            if keyword.lower() in process_name:
-                return category
-
-    return "Unknown"
-
-
-def classify_all_processes(processes):
-    classified = []
-
-    for proc in processes:
-        category = classify_process(proc["name"])
-        classified.append({
-            "pid": proc["pid"],
-            "name": proc["name"],
-            "category": category
+function simulateAlert() {
+    fetch('/api/simulate_alert')
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Simulate alert request failed');
+            }
+            return response.json();
         })
+        .then(() => fetchDashboard())
+        .catch((error) => console.error('Failed to simulate alert:', error));
+}
 
-    return classified
-
-
-def build_category_summary(classified_processes):
-    summary = {
-        "Gaming": 0,
-        "Browsing": 0,
-        "School/Work": 0,
-        "Job Search": 0,
-        "Unknown": 0
+function updateUI(data) {
+    if (data.error) {
+        console.error('API error:', data.error);
+        return;
     }
 
-    for proc in classified_processes:
-        summary[proc["category"]] += 1
+    document.getElementById('ip').textContent = data.ip_info?.ip || 'Unavailable';
+    document.getElementById('location').textContent = `${data.ip_info?.city || 'Unknown'}, ${data.ip_info?.region || 'Unknown'}, ${data.ip_info?.country || 'Unknown'}`;
+    document.getElementById('org').textContent = data.ip_info?.org || 'Unknown';
+    document.getElementById('vpn-status').textContent = data.ip_info?.vpn_detected ? 'Yes' : 'No';
+    document.getElementById('category').textContent = data.current_category || 'Unknown';
+    document.getElementById('total-connections').textContent = data.connection_summary?.total_connections || 0;
+    document.getElementById('established').textContent = data.connection_summary?.established || 0;
+    document.getElementById('listening').textContent = data.connection_summary?.listening || 0;
 
-    return summary
+    updateList('category-summary', categoryOrder.map((category) => `${category}: ${data.category_summary[category] || 0}`));
+    updateList('alerts-history', data.alerts_history.length ? data.alerts_history.slice(-10).map(formatAlert) : ['No alerts yet']);
+    updateList(
+        'processes',
+        data.processes.slice(0, 15).map((proc) => `${proc.name} (PID ${proc.pid}) — ${proc.category}`),
+    );
+    updateList(
+        'top-network-processes',
+        data.connection_summary.top_connection_processes.length
+            ? data.connection_summary.top_connection_processes.map((proc) => `${proc.name} (PID ${proc.pid}) — ${proc.count} conns`)
+            : ['No network process activity'],
+    );
 
+    usageChart.data.datasets[0].data = categoryOrder.map((category) => data.usage_seconds[category] || 0);
+    usageChart.update();
 
-def get_primary_activity(category_summary):
-    priority_order = ["Gaming", "School/Work", "Job Search", "Browsing", "Unknown"]
+    const history = data.history.slice(-12);
+    activityChart.data.labels = history.map((entry) => entry.timestamp);
+    activityChart.data.datasets[0].data = history.map((entry) => categoryMap[entry.category] ?? 0);
+    activityChart.update();
+}
 
-    best_category = "Unknown"
-    best_score = -1
+function formatAlert(alert) {
+    return `${alert.timestamp} [${alert.severity}] ${alert.description}`;
+}
 
-    for category in priority_order:
-        if category_summary.get(category, 0) > best_score:
-            best_score = category_summary.get(category, 0)
-            best_category = category
+function updateList(elementId, items) {
+    const container = document.getElementById(elementId);
+    container.innerHTML = items
+        .map((item) => `<li>${item}</li>`)
+        .join('');
+}
 
-    return best_category
-
-
-def get_connection_summary():
-    try:
-        connections = psutil.net_connections(kind="inet")
-    except Exception:
-        connections = []
-
-    established = 0
-    listening = 0
-    process_connection_counts = {}
-    top_connection_processes = []
-
-    for conn in connections:
-        status = getattr(conn, "status", "")
-        pid = getattr(conn, "pid", None)
-
-        if status == "ESTABLISHED":
-            established += 1
-        elif status == "LISTEN":
-            listening += 1
-
-        if pid:
-            process_connection_counts[pid] = process_connection_counts.get(pid, 0) + 1
-
-    for pid, count in process_connection_counts.items():
-        try:
-            proc = psutil.Process(pid)
-            name = (proc.name() or "").lower()
-            top_connection_processes.append({
-                "pid": pid,
-                "name": name,
-                "count": count
-            })
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            continue
-
-    top_connection_processes = sorted(
-        top_connection_processes,
-        key=lambda x: x["count"],
-        reverse=True
-    )
-
-    return {
-        "total_connections": len(connections),
-        "established": established,
-        "listening": listening,
-        "top_connection_processes": top_connection_processes[:10]
-    }
-
-
-def get_public_ip_info(token=""):
-    url = "https://ipinfo.io/json"
-    headers = {}
-
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-
-    try:
-        response = requests.get(url, headers=headers, timeout=5)
-        data = response.json()
-
-        org = data.get("org", "Unknown")
-        lower_org = org.lower()
-        vpn_detected = any(
-            keyword in lower_org
-            for keyword in [
-                "vpn", "hosting", "digitalocean", "amazon", "aws",
-                "microsoft", "google cloud", "oracle"
-            ]
-        )
-
-        return {
-            "ip": data.get("ip", "Unknown"),
-            "city": data.get("city", "Unknown"),
-            "region": data.get("region", "Unknown"),
-            "country": data.get("country", "Unknown"),
-            "org": org,
-            "vpn_detected": vpn_detected
-        }
-    except Exception:
-        return {
-            "ip": "Unavailable",
-            "city": "Unavailable",
-            "region": "Unavailable",
-            "country": "Unavailable",
-            "org": "Unavailable",
-            "vpn_detected": False
-        }
-
-
-def update_usage_tracking(category, seconds=5):
-    state = load_state()
-
-    usage = state.get("usage_seconds", {})
-    usage[category] = usage.get(category, 0) + seconds
-    state["usage_seconds"] = usage
-
-    history = state.get("history", [])
-    history.append({
-        "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "category": category
-    })
-
-    state["history"] = history[-60:]
-    save_state(state)
+document.addEventListener('DOMContentLoaded', init);

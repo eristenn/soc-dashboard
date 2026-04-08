@@ -1,89 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Behavior-Based SOC Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-    <div class="container">
-        <div class="header-row">
-            <h1>Behavior-Based SOC Dashboard</h1>
-            <button id="simulate-btn">Simulate Suspicious Activity</button>
-        </div>
+﻿from flask import Flask, jsonify, render_template
 
-        <div class="grid">
-            <div class="card">
-                <h2>IP / Location</h2>
-                <p><strong>IP:</strong> <span id="ip">Loading...</span></p>
-                <p><strong>Location:</strong> <span id="location">Loading...</span></p>
-                <p><strong>Org:</strong> <span id="org">Loading...</span></p>
-                <p><strong>Possible VPN/Hosted IP:</strong> <span id="vpn-status">Loading...</span></p>
-            </div>
+from config import IPINFO_TOKEN, REFRESH_SECONDS
+from monitor import (
+    build_category_summary,
+    classify_all_processes,
+    get_active_processes,
+    get_connection_summary,
+    get_primary_activity,
+    get_public_ip_info,
+    load_state,
+    save_state,
+    update_usage_tracking,
+)
+from rules import evaluate_alerts
 
-            <div class="card">
-                <h2>Primary Activity</h2>
-                <p class="big-text" id="category">Loading...</p>
-            </div>
+app = Flask(__name__)
 
-            <div class="card">
-                <h2>Active Category Summary</h2>
-                <ul id="category-summary">
-                    <li>Loading...</li>
-                </ul>
-            </div>
 
-            <div class="card">
-                <h2>Network Summary</h2>
-                <p><strong>Total Connections:</strong> <span id="total-connections">0</span></p>
-                <p><strong>Established:</strong> <span id="established">0</span></p>
-                <p><strong>Listening:</strong> <span id="listening">0</span></p>
-            </div>
-        </div>
+@app.route('/')
+def index():
+    return render_template('index.html', refresh_seconds=REFRESH_SECONDS)
 
-        <div class="grid">
-            <div class="card">
-                <h2>Alerts</h2>
-                <ul id="alerts-history">
-                    <li>No alerts yet</li>
-                </ul>
-            </div>
 
-            <div class="card">
-                <h2>Active Processes</h2>
-                <ul id="processes">
-                    <li>Loading...</li>
-                </ul>
-            </div>
-        </div>
+@app.route('/api/dashboard')
+def dashboard_data():
+    try:
+        processes = get_active_processes()
+        classified_processes = classify_all_processes(processes)
+        category_summary = build_category_summary(classified_processes)
+        category = get_primary_activity(category_summary)
 
-        <div class="grid">
-            <div class="card">
-                <h2>Top Network Processes</h2>
-                <ul id="top-network-processes">
-                    <li>Loading...</li>
-                </ul>
-            </div>
+        connection_summary = get_connection_summary()
+        ip_info = get_public_ip_info(IPINFO_TOKEN)
 
-            <div class="card">
-                <h2>Time Spent Per Category</h2>
-                <canvas id="usageChart"></canvas>
-            </div>
-        </div>
+        update_usage_tracking(category, seconds=REFRESH_SECONDS)
+        new_alerts = evaluate_alerts(ip_info, category, connection_summary)
+        state = load_state()
 
-        <div class="grid">
-            <div class="card full-width">
-                <h2>Activity Over Time</h2>
-                <canvas id="activityChart"></canvas>
-            </div>
-        </div>
-    </div>
+        return jsonify({
+            'ip_info': ip_info,
+            'current_category': category,
+            'category_summary': category_summary,
+            'processes': classified_processes,
+            'connection_summary': connection_summary,
+            'new_alerts': new_alerts,
+            'alerts_history': state.get('alerts_history', []),
+            'usage_seconds': state.get('usage_seconds', {}),
+            'history': state.get('history', []),
+            'refresh_seconds': REFRESH_SECONDS,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-    <script>
-        window.REFRESH_SECONDS = {{ refresh_seconds }};
-    </script>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
-</body>
-</html>
+
+@app.route('/api/simulate_alert')
+def simulate_alert():
+    try:
+        state = load_state()
+        fake_alert = {
+            'timestamp': 'SIMULATED',
+            'severity': 'High',
+            'description': 'Simulated suspicious activity: unusual outbound connection burst',
+        }
+        alerts = state.get('alerts_history', [])
+        alerts.append(fake_alert)
+        state['alerts_history'] = alerts[-100:]
+        save_state(state)
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

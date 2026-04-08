@@ -82,7 +82,7 @@
     </div>
 
     <script>
-        window.REFRESH_SECONDS = {{ refresh_seconds }};
+        window.REFRESH_SECONDS = {{ refresh_seconds | default(5) }};
     </script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
