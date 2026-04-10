@@ -28,3 +28,5 @@ STATE_FILE = 'data/state.json'
 ALERT_LOG_FILE = 'logs/alerts.log'
 IPINFO_TOKEN = os.getenv('IPINFO_TOKEN', '')
 REFRESH_SECONDS = int(os.getenv('REFRESH_SECONDS', '5'))
+NEWS_FEED_URL = os.getenv('NEWS_FEED_URL', 'https://threatpost.com/feed/')
+GOOGLE_CALENDAR_EMBED_URL = os.getenv('GOOGLE_CALENDAR_EMBED_URL', 'https://calendar.google.com/calendar/embed?src=eristenf%40gmail.com&ctz=America%2FChicago')

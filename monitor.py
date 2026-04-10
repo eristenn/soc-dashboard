@@ -17,6 +17,8 @@ def ensure_state_file():
                     'last_ip': None,
                     'last_location': None,
                     'last_category': 'Unknown',
+                    'current_category': 'Unknown',
+                    'current_category_start': None,
                     'usage_seconds': {},
                     'history': [],
                     'alerts_history': [],
@@ -199,12 +201,19 @@ def get_public_ip_info(token=''):
 def update_usage_tracking(category, seconds=5):
     state = load_state()
 
+    current_category = state.get('current_category', 'Unknown')
+    if current_category != category:
+        state['current_category'] = category
+        state['current_category_start'] = datetime.utcnow().isoformat()
+    elif not state.get('current_category_start'):
+        state['current_category_start'] = datetime.utcnow().isoformat()
+
     usage = state.get('usage_seconds', {})
     usage[category] = usage.get(category, 0) + seconds
     state['usage_seconds'] = usage
 
     history = state.get('history', [])
     history.append({'timestamp': datetime.now().strftime('%H:%M:%S'), 'category': category})
-
     state['history'] = history[-60:]
+
     save_state(state)

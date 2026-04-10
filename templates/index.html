@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,77 +8,88 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header-row">
-            <h1>Behavior-Based SOC Dashboard</h1>
+    <div class="page-shell">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">Behavior-based SOC</p>
+                <h1>Dashboard</h1>
+            </div>
             <button id="simulate-btn">Simulate Suspicious Activity</button>
-        </div>
+        </header>
 
-        <div class="grid">
-            <div class="card">
-                <h2>IP / Location</h2>
+        <section class="dashboard-grid">
+            <article class="card current-card">
+                <div class="card-title"><h2>Current Activity</h2></div>
+                <div class="current-value" id="current-activity">Loading...</div>
+                <div class="elapsed">Elapsed: <span id="elapsed-time">0s</span></div>
+            </article>
+
+            <article class="card usage-card">
+                <div class="card-title"><h2>Time Spent Per Category</h2></div>
+                <canvas id="usageChart"></canvas>
+            </article>
+
+            <article class="card news-card">
+                <div class="card-title"><h2>Cyber News Feed</h2></div>
+                <ul id="news-feed">
+                    <li>Loading news...</li>
+                </ul>
+            </article>
+
+            <article class="card calendar-card full-width">
+                <div class="card-title"><h2>Google Calendar</h2></div>
+                <iframe id="calendar-iframe" src="{{ google_calendar_embed_url }}" style="border: 0" width="100%" height="600" frameborder="0" scrolling="no"></iframe>
+            </article>
+
+            <article class="card">
+                <div class="card-title"><h2>IP / Location</h2></div>
                 <p><strong>IP:</strong> <span id="ip">Loading...</span></p>
                 <p><strong>Location:</strong> <span id="location">Loading...</span></p>
                 <p><strong>Org:</strong> <span id="org">Loading...</span></p>
-                <p><strong>Possible VPN/Hosted IP:</strong> <span id="vpn-status">Loading...</span></p>
-            </div>
+                <p><strong>VPN/Hosted IP:</strong> <span id="vpn-status">Loading...</span></p>
+            </article>
 
-            <div class="card">
-                <h2>Primary Activity</h2>
-                <p class="big-text" id="category">Loading...</p>
-            </div>
+            <article class="card">
+                <div class="card-title"><h2>Primary Activity</h2></div>
+                <div class="activity-badge" id="category">Loading...</div>
+            </article>
 
-            <div class="card">
-                <h2>Active Category Summary</h2>
+            <article class="card">
+                <div class="card-title"><h2>Active Category Summary</h2></div>
                 <ul id="category-summary">
                     <li>Loading...</li>
                 </ul>
-            </div>
+            </article>
 
-            <div class="card">
-                <h2>Network Summary</h2>
+            <article class="card">
+                <div class="card-title"><h2>Network Summary</h2></div>
                 <p><strong>Total Connections:</strong> <span id="total-connections">0</span></p>
                 <p><strong>Established:</strong> <span id="established">0</span></p>
                 <p><strong>Listening:</strong> <span id="listening">0</span></p>
-            </div>
-        </div>
+            </article>
 
-        <div class="grid">
-            <div class="card">
-                <h2>Alerts</h2>
+            <article class="card">
+                <div class="card-title"><h2>Alerts</h2></div>
                 <ul id="alerts-history">
                     <li>No alerts yet</li>
                 </ul>
-            </div>
+            </article>
 
-            <div class="card">
-                <h2>Active Processes</h2>
+            <article class="card">
+                <div class="card-title"><h2>Active Processes</h2></div>
                 <ul id="processes">
                     <li>Loading...</li>
                 </ul>
-            </div>
-        </div>
+            </article>
 
-        <div class="grid">
-            <div class="card">
-                <h2>Top Network Processes</h2>
+            <article class="card">
+                <div class="card-title"><h2>Top Network Processes</h2></div>
                 <ul id="top-network-processes">
                     <li>Loading...</li>
                 </ul>
-            </div>
+            </article>
 
-            <div class="card">
-                <h2>Time Spent Per Category</h2>
-                <canvas id="usageChart"></canvas>
-            </div>
-        </div>
-
-        <div class="grid">
-            <div class="card full-width">
-                <h2>Activity Over Time</h2>
-                <canvas id="activityChart"></canvas>
-            </div>
-        </div>
+        </section>
     </div>
 
     <script>

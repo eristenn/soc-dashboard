@@ -4,3 +4,4 @@ __pycache__/
 .env
 logs/
 data/state.json
+data/google_token.json
