@@ -1,100 +1,213 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Behavior-Based SOC Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Behavior-Based SOC Dashboard</title>
+  <meta name="description" content="Real-time Security Operations Center dashboard with behavioral analytics and threat intelligence.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="page-shell">
-        <header class="page-header">
-            <div>
-                <p class="eyebrow">Behavior-based SOC</p>
-                <h1>Dashboard</h1>
-            </div>
-            <button id="simulate-btn">Simulate Suspicious Activity</button>
-        </header>
 
-        <section class="dashboard-grid">
-            <article class="card current-card">
-                <div class="card-title"><h2>Current Activity</h2></div>
-                <div class="current-value" id="current-activity">Loading...</div>
-                <div class="elapsed">Elapsed: <span id="elapsed-time">0s</span></div>
-            </article>
+  <!-- Scanline overlay -->
+  <div class="scanline-overlay" aria-hidden="true"></div>
 
-            <article class="card usage-card">
-                <div class="card-title"><h2>Time Spent Per Category</h2></div>
-                <canvas id="usageChart"></canvas>
-            </article>
-
-            <article class="card news-card">
-                <div class="card-title"><h2>Cyber News Feed</h2></div>
-                <ul id="news-feed">
-                    <li>Loading news...</li>
-                </ul>
-            </article>
-
-            <article class="card calendar-card full-width">
-                <div class="card-title"><h2>Google Calendar</h2></div>
-                <iframe id="calendar-iframe" src="{{ google_calendar_embed_url }}" style="border: 0" width="100%" height="600" frameborder="0" scrolling="no"></iframe>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>IP / Location</h2></div>
-                <p><strong>IP:</strong> <span id="ip">Loading...</span></p>
-                <p><strong>Location:</strong> <span id="location">Loading...</span></p>
-                <p><strong>Org:</strong> <span id="org">Loading...</span></p>
-                <p><strong>VPN/Hosted IP:</strong> <span id="vpn-status">Loading...</span></p>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>Primary Activity</h2></div>
-                <div class="activity-badge" id="category">Loading...</div>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>Active Category Summary</h2></div>
-                <ul id="category-summary">
-                    <li>Loading...</li>
-                </ul>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>Network Summary</h2></div>
-                <p><strong>Total Connections:</strong> <span id="total-connections">0</span></p>
-                <p><strong>Established:</strong> <span id="established">0</span></p>
-                <p><strong>Listening:</strong> <span id="listening">0</span></p>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>Alerts</h2></div>
-                <ul id="alerts-history">
-                    <li>No alerts yet</li>
-                </ul>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>Active Processes</h2></div>
-                <ul id="processes">
-                    <li>Loading...</li>
-                </ul>
-            </article>
-
-            <article class="card">
-                <div class="card-title"><h2>Top Network Processes</h2></div>
-                <ul id="top-network-processes">
-                    <li>Loading...</li>
-                </ul>
-            </article>
-
-        </section>
+  <!-- Header -->
+  <header class="soc-header">
+    <div class="header-left">
+      <div class="header-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        <h1 class="header-title">SOC Dashboard</h1>
+        <span class="header-subtitle">Behavior-Based SIEM &middot; Real-Time Monitoring</span>
+      </div>
+      <span id="status-dot" class="status-dot status-connected" title="Connection status"></span>
     </div>
+    <div class="header-right">
+      <button id="simulate-btn" class="simulate-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Simulate Suspicious Activity
+      </button>
+    </div>
+  </header>
 
-    <script>
-        window.REFRESH_SECONDS = {{ refresh_seconds | default(5) }};
-    </script>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <!-- Dashboard Grid -->
+  <main class="dashboard-grid">
+
+    <!-- Current Activity -->
+    <section class="card card--activity" data-card="activity">
+      <div class="card-header">
+        <span class="card-icon">⚡</span>
+        <h2 class="card-title">Current Activity</h2>
+        <span class="live-dot" aria-label="Live monitoring"></span>
+      </div>
+      <div class="card-body card-body--current-activity">
+        <div id="current-activity" class="current-activity-value">—</div>
+        <div class="elapsed-label">Elapsed</div>
+        <div id="elapsed-time" class="elapsed-time font-mono">0m 0s</div>
+      </div>
+    </section>
+
+    <!-- Time Spent Per Category -->
+    <section class="card card--chart" data-card="chart">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <h2 class="card-title">Time Spent Per Category</h2>
+      </div>
+      <div class="card-body card-body--chart">
+        <canvas id="usageChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Primary Activity -->
+    <section class="card card--activity" data-card="activity">
+      <div class="card-header">
+        <span class="card-icon">🎯</span>
+        <h2 class="card-title">Primary Activity</h2>
+      </div>
+      <div class="card-body card-body--primary">
+        <span id="category" class="category-badge">—</span>
+      </div>
+    </section>
+
+    <!-- Active Category Summary -->
+    <section class="card card--activity" data-card="activity">
+      <div class="card-header">
+        <span class="card-icon">📋</span>
+        <h2 class="card-title">Active Category Summary</h2>
+      </div>
+      <div class="card-body">
+        <ul id="category-summary" class="data-list"></ul>
+      </div>
+    </section>
+
+    <!-- IP / Location -->
+    <section class="card card--info" data-card="info">
+      <div class="card-header">
+        <span class="card-icon">📡</span>
+        <h2 class="card-title">IP / Location</h2>
+      </div>
+      <div class="card-body">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Public IP</span>
+            <span id="ip" class="info-value font-mono">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Location</span>
+            <span id="location" class="info-value">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">ISP / Org</span>
+            <span id="org" class="info-value">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">VPN Status</span>
+            <span id="vpn-status" class="info-value">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Network Summary -->
+    <section class="card card--network" data-card="network">
+      <div class="card-header">
+        <span class="card-icon">🌐</span>
+        <h2 class="card-title">Network Summary</h2>
+      </div>
+      <div class="card-body">
+        <div class="net-stats">
+          <div class="net-stat">
+            <span class="net-stat-value font-mono" id="total-connections">0</span>
+            <span class="net-stat-label">Total</span>
+          </div>
+          <div class="net-stat">
+            <span class="net-stat-value font-mono" id="established">0</span>
+            <span class="net-stat-label">Established</span>
+          </div>
+          <div class="net-stat">
+            <span class="net-stat-value font-mono" id="listening">0</span>
+            <span class="net-stat-label">Listening</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Alerts -->
+    <section class="card card--alerts" data-card="alerts">
+      <div class="card-header">
+        <span class="card-icon">🚨</span>
+        <h2 class="card-title">Alerts</h2>
+      </div>
+      <div class="card-body card-body--alerts">
+        <ul id="alerts-history" class="alerts-list"></ul>
+      </div>
+    </section>
+
+    <!-- Active Processes -->
+    <section class="card card--activity" data-card="activity">
+      <div class="card-header">
+        <span class="card-icon">⚙️</span>
+        <h2 class="card-title">Active Processes</h2>
+      </div>
+      <div class="card-body card-body--scroll">
+        <ul id="processes" class="data-list font-mono"></ul>
+      </div>
+    </section>
+
+    <!-- Top Network Processes -->
+    <section class="card card--network" data-card="network">
+      <div class="card-header">
+        <span class="card-icon">📶</span>
+        <h2 class="card-title">Top Network Processes</h2>
+      </div>
+      <div class="card-body card-body--scroll">
+        <ul id="top-network-processes" class="data-list font-mono"></ul>
+      </div>
+    </section>
+
+    <!-- Cyber News Feed -->
+    <section class="card card--info" data-card="info">
+      <div class="card-header">
+        <span class="card-icon">📰</span>
+        <h2 class="card-title">Cyber News Feed</h2>
+      </div>
+      <div class="card-body card-body--scroll">
+        <ul id="news-feed" class="news-list"></ul>
+      </div>
+    </section>
+
+    <!-- Google Calendar (full width) -->
+    <section class="card card--calendar card--full-width" data-card="calendar">
+      <div class="card-header">
+        <span class="card-icon">📅</span>
+        <h2 class="card-title">Google Calendar</h2>
+      </div>
+      <div class="card-body card-body--calendar">
+        {% if google_calendar_embed_url %}
+          <iframe id="calendar-iframe"
+                  src="{{ google_calendar_embed_url }}"
+                  frameborder="0"
+                  scrolling="no"
+                  title="Google Calendar"></iframe>
+        {% else %}
+          <div id="calendar-iframe" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:0.85rem;">
+            Set GOOGLE_CALENDAR_EMBED_URL environment variable to enable calendar
+          </div>
+        {% endif %}
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    window.REFRESH_SECONDS = {{ refresh_seconds }};
+  </script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

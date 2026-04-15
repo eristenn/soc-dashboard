@@ -2,18 +2,18 @@
 
 PROCESS_CATEGORIES = {
     'Gaming': [
-        'steam.exe', 'epicgameslauncher.exe', 'riotclientservices.exe',
-        'valorant.exe', 'eldenring.exe', 'game.exe',
+        'steam', 'epicgameslauncher', 'riotclientservices',
+        'valorant', 'eldenring', 'game',
     ],
     'Browsing': [
-        'chrome.exe', 'firefox.exe', 'msedge.exe', 'opera.exe', 'brave.exe',
+        'chrome', 'firefox', 'msedge', 'opera', 'brave',
     ],
     'School/Work': [
-        'code.exe', 'devenv.exe', 'winword.exe', 'excel.exe',
-        'powerpnt.exe', 'acrobat.exe', 'acrord32.exe', 'notepad++.exe',
+        'code', 'devenv', 'winword', 'excel',
+        'powerpnt', 'acrobat', 'acrord32', 'notepad++',
     ],
     'Job Search': [
-        'outlook.exe', 'teams.exe', 'slack.exe',
+        'outlook', 'teams', 'slack',
     ],
 }
 
@@ -24,9 +24,16 @@ KNOWN_SAFE_PROCESSES = {
 }
 
 CONNECTION_THRESHOLD = 40
+UNKNOWN_PROCESS_CONNECTION_THRESHOLD = int(os.getenv('UNKNOWN_PROC_CONN_THRESHOLD', '10'))
+
 STATE_FILE = 'data/state.json'
 ALERT_LOG_FILE = 'logs/alerts.log'
+
 IPINFO_TOKEN = os.getenv('IPINFO_TOKEN', '')
-REFRESH_SECONDS = int(os.getenv('REFRESH_SECONDS', '5'))
+REFRESH_SECONDS = int(os.getenv('REFRESH_SECONDS', '30'))
+
+IP_CACHE_TTL = int(os.getenv('IP_CACHE_TTL', '300'))
+NEWS_CACHE_TTL = int(os.getenv('NEWS_CACHE_TTL', '600'))
+
 NEWS_FEED_URL = os.getenv('NEWS_FEED_URL', 'https://threatpost.com/feed/')
-GOOGLE_CALENDAR_EMBED_URL = os.getenv('GOOGLE_CALENDAR_EMBED_URL', 'https://calendar.google.com/calendar/embed?src=eristenf%40gmail.com&ctz=America%2FChicago')
+GOOGLE_CALENDAR_EMBED_URL = os.getenv('GOOGLE_CALENDAR_EMBED_URL', '')
